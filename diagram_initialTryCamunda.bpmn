@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0501azi" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.12.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.15.0">
+  <bpmn:process id="initialTryCamundaProcess" name="initialTryCamundaProcess" isExecutable="true">
+    <bpmn:extensionElements>
+      <camunda:executionListener class="com.spirit.DMRE.camunda.startMedicalGuidelineProcess" event="start" />
+    </bpmn:extensionElements>
+    <bpmn:exclusiveGateway id="Gateway_1tle3it">
+      <bpmn:incoming>Flow_0izbto1</bpmn:incoming>
+      <bpmn:outgoing>Flow_113skv8</bpmn:outgoing>
+      <bpmn:outgoing>moderateBadFlow</bpmn:outgoing>
+      <bpmn:outgoing>veryBadFlow</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="furtherAssessmentActivity" name="Further Assessment">
+      <bpmn:incoming>Flow_018fkeu</bpmn:incoming>
+      <bpmn:incoming>Flow_0v88nml</bpmn:incoming>
+      <bpmn:incoming>Flow_1dgzgq5</bpmn:incoming>
+      <bpmn:outgoing>Flow_0d1ct4x</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="InitialAssessment" name="Initial assessment" camunda:class="com.spirit.DMRE.camunda.InitialAssessmentDelegate">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="checkingCodes">
+            <camunda:map>
+              <camunda:entry key="speaking">46679-7</camunda:entry>
+              <camunda:entry key="skinColor">39107-8</camunda:entry>
+              <camunda:entry key="consciousnessLevel">80288-4</camunda:entry>
+            </camunda:map>
+          </camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1kbgrn1</bpmn:incoming>
+      <bpmn:outgoing>Flow_0izbto1</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_1kbgrn1" sourceRef="Activity_0ut6uv1" targetRef="InitialAssessment" />
+    <bpmn:sequenceFlow id="Flow_0izbto1" sourceRef="InitialAssessment" targetRef="Gateway_1tle3it" />
+    <bpmn:sequenceFlow id="Flow_113skv8" name="Speaks up in phrases&#10;Sits up&#10;Not agitated" sourceRef="Gateway_1tle3it" targetRef="moderate_activity">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${speaking=='unlimited' &amp;&amp; skinColor=='Normal' &amp;&amp; consciousnessLevel=='alert'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="moderateBadFlow" name="Speaks in words&#10;Sits forward&#10;Agitated&#10;Accessory muscles used" sourceRef="Gateway_1tle3it" targetRef="severe_activity">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${speaking=='Limited' &amp;&amp; skinColor=='Pale' &amp;&amp; consciousnessLevel=='Stuporous'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="veryBadFlow" name="Drowsy&#10;Confused&#10;Exhausted&#10;Cyanosis&#10;Poor respiratory effort" sourceRef="Gateway_1tle3it" targetRef="threatening_activity">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${speaking=='Limited' &amp;&amp; skinColor=='Cyanotic' &amp;&amp; consciousnessLevel=='Confused'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_018fkeu" sourceRef="moderate_activity" targetRef="furtherAssessmentActivity" />
+    <bpmn:sequenceFlow id="Flow_0v88nml" sourceRef="severe_activity" targetRef="furtherAssessmentActivity" />
+    <bpmn:sequenceFlow id="Flow_1dgzgq5" sourceRef="threatening_activity" targetRef="furtherAssessmentActivity" />
+    <bpmn:serviceTask id="severe_activity" name="Severe" camunda:class="com.spirit.DMRE.camunda.sendRestRequest">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="severity">moderate</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>moderateBadFlow</bpmn:incoming>
+      <bpmn:outgoing>Flow_0v88nml</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_0ut6uv1" name="Call FHIR-Servers and generate RDF" camunda:class="com.spirit.DMRE.camunda.FHIR2RDFConverter">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="FHIRServers">
+            <camunda:list>
+              <camunda:value>http://hapi.fhir.org/baseR4</camunda:value>
+              <camunda:value>http://wildfhir4.aegis.net/fhir4-0-1</camunda:value>
+              <camunda:value>http://localhost:8080/DMRE-TRUNK-SNAPSHOT/fhir/</camunda:value>
+            </camunda:list>
+          </camunda:inputParameter>
+          <camunda:inputParameter name="FHIRResources">
+            <camunda:list>
+              <camunda:value>Observation</camunda:value>
+              <camunda:value>MedicationAdministration</camunda:value>
+            </camunda:list>
+          </camunda:inputParameter>
+          <camunda:inputParameter name="PatientID">00002</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1j45n26</bpmn:incoming>
+      <bpmn:incoming>Flow_1ezz5k9</bpmn:incoming>
+      <bpmn:outgoing>Flow_1kbgrn1</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="moderate_activity" name="Mild to Moderate" camunda:class="com.spirit.DMRE.camunda.sendRestRequest">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="severity">low</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_113skv8</bpmn:incoming>
+      <bpmn:outgoing>Flow_018fkeu</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="threatening_activity" name="Life Threatening" camunda:class="com.spirit.DMRE.camunda.sendRestRequest">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="severity">high</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>veryBadFlow</bpmn:incoming>
+      <bpmn:outgoing>Flow_1dgzgq5</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:task id="initialTreatmentActivity" name="Initial Management">
+      <bpmn:incoming>Flow_0d1ct4x</bpmn:incoming>
+      <bpmn:outgoing>Flow_1ph2lf3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_0d1ct4x" sourceRef="furtherAssessmentActivity" targetRef="initialTreatmentActivity" />
+    <bpmn:sequenceFlow id="Flow_1ph2lf3" sourceRef="initialTreatmentActivity" targetRef="Activity_0s2owia" />
+    <bpmn:exclusiveGateway id="Gateway_for_Transport_or_wait" name="Gateway_for_Transport_or_wait">
+      <bpmn:incoming>Flow_1dkmtmy</bpmn:incoming>
+      <bpmn:outgoing>Flow_160maha</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0pc27h7</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_1dkmtmy" sourceRef="Activity_0s2owia" targetRef="Gateway_for_Transport_or_wait" />
+    <bpmn:sequenceFlow id="Flow_160maha" sourceRef="Gateway_for_Transport_or_wait" targetRef="Transport">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${readyForTransport=='yes'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:endEvent id="EndProcess" name="EndProcess">
+      <bpmn:extensionElements>
+        <camunda:executionListener class="com.spirit.DMRE.camunda.EndProcessDelegate" event="start" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1m399cl</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1m399cl" sourceRef="Transport" targetRef="EndProcess" />
+    <bpmn:sequenceFlow id="Flow_0pc27h7" sourceRef="Gateway_for_Transport_or_wait" targetRef="Sleep">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${readyForTransport=='no'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:startEvent id="startEvent">
+      <bpmn:outgoing>Flow_1j45n26</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_1j45n26" sourceRef="startEvent" targetRef="Activity_0ut6uv1" />
+    <bpmn:serviceTask id="Activity_0s2owia" name="Apply Drugs" camunda:class="com.spirit.DMRE.camunda.ApplyDrugs">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="medication">Aspirin</camunda:inputParameter>
+          <camunda:inputParameter name="patientID">00002</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1ph2lf3</bpmn:incoming>
+      <bpmn:outgoing>Flow_1dkmtmy</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Transport" name="Transport" camunda:class="com.spirit.DMRE.camunda.Transport">
+      <bpmn:incoming>Flow_160maha</bpmn:incoming>
+      <bpmn:outgoing>Flow_1m399cl</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Sleep" name="Sleep and wait for drugs to take effect" camunda:class="com.spirit.DMRE.camunda.TimerWaitingExtension">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="millisToWait">60000</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0pc27h7</bpmn:incoming>
+      <bpmn:outgoing>Flow_1pmdc5w</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_1pmdc5w" sourceRef="Sleep" targetRef="CaptureNewObservation" />
+    <bpmn:sequenceFlow id="Flow_1ezz5k9" sourceRef="CaptureNewObservation" targetRef="Activity_0ut6uv1" />
+    <bpmn:serviceTask id="CaptureNewObservation" name="Capture new Observations as FHIR-Resources" camunda:class="com.spirit.DMRE.camunda.NewObservationGenerator">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="patientID">00002</camunda:inputParameter>
+          <camunda:inputParameter name="FhirContentList">
+            <camunda:map>
+              <camunda:entry key="code">46679-7</camunda:entry>
+              <camunda:entry key="value">Limited</camunda:entry>
+              <camunda:entry key="unit">none</camunda:entry>
+            </camunda:map>
+          </camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1pmdc5w</bpmn:incoming>
+      <bpmn:outgoing>Flow_1ezz5k9</bpmn:outgoing>
+    </bpmn:serviceTask>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="initialTryCamundaProcess">
+      <bpmndi:BPMNEdge id="Flow_1ezz5k9_di" bpmnElement="Flow_1ezz5k9">
+        <di:waypoint x="880" y="520" />
+        <di:waypoint x="280" y="520" />
+        <di:waypoint x="280" y="290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1pmdc5w_di" bpmnElement="Flow_1pmdc5w">
+        <di:waypoint x="1330" y="470" />
+        <di:waypoint x="1330" y="520" />
+        <di:waypoint x="980" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1j45n26_di" bpmnElement="Flow_1j45n26">
+        <di:waypoint x="188" y="250" />
+        <di:waypoint x="230" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0pc27h7_di" bpmnElement="Flow_0pc27h7">
+        <di:waypoint x="1330" y="275" />
+        <di:waypoint x="1330" y="390" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1m399cl_di" bpmnElement="Flow_1m399cl">
+        <di:waypoint x="1520" y="250" />
+        <di:waypoint x="1592" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_160maha_di" bpmnElement="Flow_160maha">
+        <di:waypoint x="1355" y="250" />
+        <di:waypoint x="1420" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1dkmtmy_di" bpmnElement="Flow_1dkmtmy">
+        <di:waypoint x="1240" y="250" />
+        <di:waypoint x="1305" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ph2lf3_di" bpmnElement="Flow_1ph2lf3">
+        <di:waypoint x="1080" y="250" />
+        <di:waypoint x="1140" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0d1ct4x_di" bpmnElement="Flow_0d1ct4x">
+        <di:waypoint x="920" y="250" />
+        <di:waypoint x="980" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1dgzgq5_di" bpmnElement="Flow_1dgzgq5">
+        <di:waypoint x="760" y="400" />
+        <di:waypoint x="870" y="400" />
+        <di:waypoint x="870" y="290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0v88nml_di" bpmnElement="Flow_0v88nml">
+        <di:waypoint x="760" y="250" />
+        <di:waypoint x="820" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_018fkeu_di" bpmnElement="Flow_018fkeu">
+        <di:waypoint x="760" y="140" />
+        <di:waypoint x="870" y="140" />
+        <di:waypoint x="870" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1a6beeg_di" bpmnElement="veryBadFlow">
+        <di:waypoint x="540" y="275" />
+        <di:waypoint x="540" y="400" />
+        <di:waypoint x="660" y="400" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="524" y="410" width="79" height="80" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0h0vr4g_di" bpmnElement="moderateBadFlow">
+        <di:waypoint x="565" y="250" />
+        <di:waypoint x="660" y="250" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="563" y="257" width="81" height="66" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_113skv8_di" bpmnElement="Flow_113skv8">
+        <di:waypoint x="540" y="225" />
+        <di:waypoint x="540" y="140" />
+        <di:waypoint x="660" y="140" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="553" y="83" width="64" height="53" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0izbto1_di" bpmnElement="Flow_0izbto1">
+        <di:waypoint x="490" y="250" />
+        <di:waypoint x="515" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1kbgrn1_di" bpmnElement="Flow_1kbgrn1">
+        <di:waypoint x="330" y="250" />
+        <di:waypoint x="390" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Gateway_1tle3it_di" bpmnElement="Gateway_1tle3it" isMarkerVisible="true">
+        <dc:Bounds x="515" y="225" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1igg0m4_di" bpmnElement="furtherAssessmentActivity">
+        <dc:Bounds x="820" y="210" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1bb4gmd_di" bpmnElement="InitialAssessment">
+        <dc:Bounds x="390" y="210" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1smh7oa_di" bpmnElement="severe_activity">
+        <dc:Bounds x="660" y="210" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0iw45l3_di" bpmnElement="Activity_0ut6uv1">
+        <dc:Bounds x="230" y="210" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0u1byc4_di" bpmnElement="moderate_activity">
+        <dc:Bounds x="660" y="100" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0f3dz1t_di" bpmnElement="threatening_activity">
+        <dc:Bounds x="660" y="360" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_08q98ni_di" bpmnElement="initialTreatmentActivity">
+        <dc:Bounds x="980" y="210" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1b8cuhr_di" bpmnElement="Gateway_for_Transport_or_wait" isMarkerVisible="true">
+        <dc:Bounds x="1305" y="225" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1288" y="195" width="85" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_088y6t2_di" bpmnElement="EndProcess">
+        <dc:Bounds x="1592" y="232" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1580" y="275" width="60" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0ccy8dj_di" bpmnElement="startEvent">
+        <dc:Bounds x="152" y="232" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0jzs7k7_di" bpmnElement="Activity_0s2owia">
+        <dc:Bounds x="1140" y="210" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1euxkl4_di" bpmnElement="Transport">
+        <dc:Bounds x="1420" y="210" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0t8uy80_di" bpmnElement="Sleep">
+        <dc:Bounds x="1280" y="390" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1tvkzpf_di" bpmnElement="CaptureNewObservation">
+        <dc:Bounds x="880" y="480" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
