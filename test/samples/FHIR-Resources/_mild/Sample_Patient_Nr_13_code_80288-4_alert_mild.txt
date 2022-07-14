@@ -1,0 +1,27 @@
+{
+  "resourceType": "Observation",
+  "status": "final",
+  "code": {
+    "coding": [ {
+      "system": "http://unitsofmeasure.org",
+      "code": "80288-4",
+      "display": "Level of consciousness"
+    } ]
+  },
+  "subject": {
+    "reference": "Patient/000013"
+  },
+  "effectivePeriod": {
+    "start": "2022-07-14T22:42:55+02:00"
+  },
+  "performer": [ {
+    "reference": "Practitioner/007",
+    "display": "DataPreparer"
+  } ],
+  "valueCodeableConcept": {
+    "coding": [ {
+      "system": "http://loinc.org",
+      "code": "alert"
+    } ]
+  }
+}
